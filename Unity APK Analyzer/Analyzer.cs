@@ -7,7 +7,8 @@ namespace UnityAndroidAnalyzer;
 public class Analyzer
 {
     // ---- Config / Patterns ----
-    private const string VersionPattern = @"20[0-9]{2}\.[0-9]+\.[0-9]+[a-z][0-9]*";
+    const string VersionPattern =
+        @"((20[0-9]{2}|[5-9][0-9]{3})\.[0-9]+\.[0-9]+[fpab][0-9]*)";
     private const string MetadataPath = "assets/bin/Data/Managed/Metadata/global-metadata.dat";
     
     public static string DetectRenderPipeline(byte[]? metadataBytes)
