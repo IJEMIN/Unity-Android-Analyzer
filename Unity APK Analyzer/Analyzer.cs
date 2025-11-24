@@ -18,15 +18,20 @@ public class Analyzer
 
         var s = ExtractPrintableAscii(metadataBytes).ToLowerInvariant();
 
-        if (s.Contains("unityengine.rendering.universal") ||
+        if (s.Contains("com.unity.render-pipelines.universal") || // package
+            s.Contains("unityengine.rendering.universal") || // namespace
             s.Contains("universalrenderpipeline") ||
             s.Contains("forwardrenderer") ||
             s.Contains("renderer2d"))
             return "URP";
 
-        if (s.Contains("unityengine.rendering.highdefinition") ||
+        if (s.Contains("com.unity.render-pipelines.high-definition") || // package
+            s.Contains("unityengine.rendering.highdefinition") || // namespace
             s.Contains("hdrenderpipeline"))
             return "HDRP";
+        
+        // Scriptable Render Pipeline (SRP) without URP/HDRP 
+        if (s.Contains("com.unity.render-pipelines.core")) return "SRP";
 
         return "Built-in";
     }
@@ -175,8 +180,9 @@ public class Analyzer
             var m = regex.Match(line);
             if (!m.Success)
                 continue;
-
+            
             var full = m.Value;
+            full = NormalizeNamespace(full);
             var parts = full.Split('.');
             string key = parts.Length >= 2 ? parts[0] + "." + parts[1] : parts[0];
 
@@ -188,6 +194,19 @@ public class Analyzer
             result.Add((kv.Key, kv.Value));
 
         return result;
+    }
+    
+    static string NormalizeNamespace(string ns)
+    {
+        // BUnityEngine..., HUnity.InternalAPI..., 등 한 글자 + Unity... 패턴을 Unity...로 정규화
+        if (ns.Length > 6 &&
+            char.IsUpper(ns[0]) &&
+            ns.Substring(1).StartsWith("Unity", StringComparison.Ordinal))
+        {
+            return ns.Substring(1);
+        }
+
+        return ns;
     }
 
     private static byte[]? ExtractEntryBytes(ZipArchive zip, string entryName)
