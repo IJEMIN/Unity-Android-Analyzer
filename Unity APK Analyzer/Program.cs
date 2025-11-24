@@ -242,11 +242,18 @@ namespace UnityAndroidAnalyzer
             
             try
             {
+                var scriptingAssembliesJson =
+                    Analyzer.ExtractJsonTextFromContainers(zipArchives, "assets/bin/Data/ScriptingAssemblies.json");
+                var runtimeInitJson =
+                    Analyzer.ExtractJsonTextFromContainers(zipArchives, "assets/bin/Data/RuntimeInitializeOnLoads.json");
+                
                 var unityVersion = Analyzer.DetectUnityVersionFromContainers(zipArchives) ?? "Unknown";
-                byte[]? metadataBytes = Analyzer.ExtractMetadataFromContainers(zipArchives);
-                string rp = Analyzer.DetectRenderPipeline(metadataBytes);
-                string entities = Analyzer.DetectEntities(metadataBytes);
-                string addr = Analyzer.DetectAddressables(zipArchives) ? "yes" : "no";
+                var metadataBytes = Analyzer.ExtractMetadataFromContainers(zipArchives);
+                var rp = Analyzer.DetectRenderPipeline(metadataBytes);
+                
+                var entities = Analyzer.DetectEntities(scriptingAssembliesJson, runtimeInitJson);
+                
+                var addr = Analyzer.DetectAddressables(zipArchives) ? "yes" : "no";
                 var nsList = Analyzer.DetectMajorNamespaces(metadataBytes);
 
                 Console.WriteLine($"## {title}");

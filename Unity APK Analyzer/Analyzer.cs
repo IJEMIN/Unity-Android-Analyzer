@@ -125,22 +125,36 @@ public class Analyzer
         return m.Success ? m.Value : null;
     }
 
-    public static string DetectEntities(byte[]? metadataBytes)
+    public static string DetectEntities(string scriptingAssembliesJson, string runtimeInitJson)
     {
-        if (metadataBytes == null || metadataBytes.Length == 0)
-            return "Unknown";
+        // 기준 1: ScriptingAssemblies.json에 Entities 관련 어셈블리 있는지
+        bool hasEntitiesAssembly = false;
+        if (!string.IsNullOrEmpty(scriptingAssembliesJson))
+        {
+            var s = scriptingAssembliesJson;
+            if (s.IndexOf("Unity.Entities", StringComparison.OrdinalIgnoreCase) >= 0
+                || s.IndexOf("Unity.Entities.Hybrid", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                hasEntitiesAssembly = true;
+            }
+        }
 
-        var s = Analyzer.ExtractPrintableAscii(metadataBytes);
-
-        bool has =
-            s.IndexOf("Unity.Entities", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            s.IndexOf("EntityManager", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            s.IndexOf("EntityComponentStore", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            s.IndexOf("ComponentSystemGroup", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            s.IndexOf("HybridRenderer", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            s.IndexOf("Unity.Physics", StringComparison.OrdinalIgnoreCase) >= 0;
-
-        return has ? "yes" : "no";
+        // 기준 2: RuntimeInitializeOnLoads.json에 Entities 관련 타입/어셈블리 초기화 항목이 있는지
+        bool hasEntitiesRuntime = false;
+        if (!string.IsNullOrEmpty(runtimeInitJson))
+        {
+            var s = runtimeInitJson;
+            if (s.IndexOf("Unity.Entities", StringComparison.OrdinalIgnoreCase) >= 0
+                || s.IndexOf("Unity.Entities.Hybrid", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                hasEntitiesRuntime = true;
+            }
+        }
+        
+        if (hasEntitiesAssembly || hasEntitiesRuntime)
+            return "yes";
+        
+        return "no";
     }
 
     public static bool DetectAddressables(List<ZipArchive> zips)
@@ -161,7 +175,27 @@ public class Analyzer
         }
         return false;
     }
+    
+    public static string ExtractJsonTextFromContainers(List<ZipArchive> zips, string entryPath)
+    {
+        foreach (var zip in zips)
+        {
+            var bytes = ExtractEntryBytes(zip, entryPath);
+            if (bytes == null || bytes.Length <= 0) continue;
+            try
+            {
+                return Encoding.UTF8.GetString(bytes);
+            }
+            catch
+            {
+                // fallback: try default encoding
+                return Encoding.Default.GetString(bytes);
+            }
+        }
 
+        return string.Empty;
+    }
+    
     public static List<(string ns, int count)> DetectMajorNamespaces(byte[]? metadataBytes)
     {
         var result = new List<(string, int)>();
