@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityAndroidAnalyzer", "UnityAndroidAnalyzer\UnityAndroidAnalyzer.csproj", "{3B712710-EBC2-48C0-9D0D-D8CAFBE7A725}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityAndroidAnalyzer.Core", "UnityAndroidAnalyzer.Core\UnityAndroidAnalyzer.Core.csproj", "{F8CE0A0F-8295-4270-9A83-BCE9A5F2C613}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{3B712710-EBC2-48C0-9D0D-D8CAFBE7A725}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3B712710-EBC2-48C0-9D0D-D8CAFBE7A725}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3B712710-EBC2-48C0-9D0D-D8CAFBE7A725}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8CE0A0F-8295-4270-9A83-BCE9A5F2C613}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8CE0A0F-8295-4270-9A83-BCE9A5F2C613}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8CE0A0F-8295-4270-9A83-BCE9A5F2C613}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8CE0A0F-8295-4270-9A83-BCE9A5F2C613}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
