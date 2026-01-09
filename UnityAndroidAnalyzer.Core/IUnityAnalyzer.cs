@@ -17,8 +17,7 @@ public class AnalysisResult
 public interface IUnityAnalyzer
 {
     Task<AnalysisResult> AnalyzeLocalAsync(string apkPath, IEnumerable<string> obbPaths);
-    // 나중에 Device 모드용
-    // Task<AnalysisResult> AnalyzeDeviceAsync(string deviceSerial, string packageName);
+    Task<AnalysisResult> AnalyzeDeviceAsync(string deviceSerial, string packageName);
 }
 
 public class DummyUnityAnalyzer : IUnityAnalyzer
@@ -40,6 +39,28 @@ public class DummyUnityAnalyzer : IUnityAnalyzer
                 ("MyGameNamespace", 500)
             },
             Markdown = "# Dummy Analysis Result\n\nThis is a dummy analysis result."
+        };
+
+        return Task.FromResult(result);
+    }
+
+    public Task<AnalysisResult> AnalyzeDeviceAsync(string deviceSerial, string packageName)
+    {
+        var result = new AnalysisResult
+        {
+            Title = $"Dummy Device Analysis: {packageName}",
+            UnityVersion = "2024.1.0f1",
+            RenderPipeline = "URP",
+            EntitiesUsed = "Yes",
+            AddressablesUsed = "No",
+            HavokUsed = "No",
+            MajorNamespaces = new List<(string Namespace, int Count)>
+            {
+                ("UnityEngine", 1500),
+                ("System", 800),
+                ("MyGameNamespace", 500)
+            },
+            Markdown = $"# Dummy Device Analysis Result\n\nPackage: {packageName}\nDevice: {deviceSerial}"
         };
 
         return Task.FromResult(result);

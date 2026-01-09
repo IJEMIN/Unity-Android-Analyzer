@@ -14,30 +14,79 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>-->
 
-    <Grid ColumnDefinitions="2*,3*" Margin="8">
-        <!-- 왼쪽: APK 선택 / 분석 -->
-        <StackPanel Grid.Column="0" Spacing="8">
-            <TextBlock Text="Local APK analysis" FontWeight="Bold" FontSize="16" />
-
-            <TextBox Text="{Binding ApkPath}"
-                     Watermark="Selected APK path"
-                     IsReadOnly="True" />
-
-            <StackPanel Orientation="Horizontal" Spacing="4">
-                <Button Content="Select APK" Click="SelectApk_OnClick" />
-                <Button Content="Analyze"    Click="Analyze_OnClick" />
-            </StackPanel>
+    <Grid RowDefinitions="Auto, *" Margin="8">
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,8">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray" FontSize="12" />
         </StackPanel>
 
-        <!-- 오른쪽: Markdown 출력 -->
-        <Border Grid.Column="1" Margin="8,0,0,0" BorderBrush="Gray" BorderThickness="1">
-            <ScrollViewer>
-                <TextBox Text="{Binding Markdown}"
-                         AcceptsReturn="True"
-                         IsReadOnly="True"
-                         TextWrapping="Wrap"
-                         FontFamily="Consolas, Menlo, monospace" />
+        <Grid Grid.Row="1" ColumnDefinitions="2*,3*" Margin="0">
+            <!-- Left Panel: Actions -->
+            <ScrollViewer Grid.Column="0">
+                <StackPanel Spacing="16">
+                    <!-- Local Analysis -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Local APK analysis" FontWeight="Bold" FontSize="16" />
+                        <TextBox Text="{Binding ApkPath}"
+                                 Watermark="Selected APK path"
+                                 IsReadOnly="True" />
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Content="Select APK" Click="SelectApk_OnClick" />
+                            <Button Content="Analyze"    Click="Analyze_OnClick" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Separator />
+
+                    <!-- ADB Connection -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="ADB Connection" FontWeight="Bold" FontSize="16" />
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBox Text="{Binding AdbAddress}" Watermark="IP:Port (e.g. 127.0.0.1:5555)" Width="200"/>
+                            <Button Content="Connect" Command="{Binding ConnectCommand}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ComboBox ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice}" Width="200" PlaceholderText="Select Device" />
+                            <Button Content="Refresh" Command="{Binding RefreshDevicesCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Separator />
+
+                    <!-- App Selection -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="App Selection" FontWeight="Bold" FontSize="16" />
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBox Text="{Binding SearchText}" Watermark="Package or Label" Width="200" />
+                            <Button Content="Search" Command="{Binding SearchPackagesCommand}" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedPackage}" Height="150">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Label}" FontWeight="Bold" />
+                                        <TextBlock Text="{Binding PackageName}" FontSize="12" Foreground="Gray" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Content="Analyze App" Command="{Binding AnalyzeDeviceCommand}" />
+                            <Button Content="Run &amp; Logs" Command="{Binding RunLogcatCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
             </ScrollViewer>
-        </Border>
+
+            <!-- Right Panel: Markdown Output -->
+            <Border Grid.Column="1" Margin="8,0,0,0" BorderBrush="Gray" BorderThickness="1">
+                <ScrollViewer>
+                    <TextBox Text="{Binding Markdown}"
+                             AcceptsReturn="True"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             FontFamily="Consolas, Menlo, monospace" />
+                </ScrollViewer>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

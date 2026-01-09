@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using UnityAndroidAnalyzer.Gui.ViewModels;
 
 namespace UnityAndroidAnalyzer.Gui.Views;
@@ -16,15 +18,23 @@ public partial class MainWindow : Window
         if (DataContext is not MainWindowViewModel vm)
             return;
 
-        var dlg = new OpenFileDialog
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
+            Title = "Select APK File",
             AllowMultiple = false,
-            Filters = { new FileDialogFilter { Name = "APK", Extensions = { "apk" } } }
-        };
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Android Package")
+                {
+                    Patterns = new[] { "*.apk" }
+                }
+            }
+        });
 
-        var result = await dlg.ShowAsync(this);
-        if (result is { Length: > 0 })
-            vm.ApkPath = result[0];
+        if (files is { Count: > 0 })
+        {
+            vm.ApkPath = files[0].Path.LocalPath;
+        }
     }
 
     private async void Analyze_OnClick(object? sender, RoutedEventArgs e)

@@ -9,25 +9,7 @@ public class AdbHelper
 
     public bool SelectDevice()
     {
-        var (exit, stdout, stderr) = SystemHelper.RunProcess("adb", "devices", true);
-        if (exit != 0)
-        {
-            Console.Error.WriteLine($"Error running 'adb devices': {stderr}");
-            return false;
-        }
-
-        var lines = stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-        var devices = new List<string>();
-
-        foreach (var line in lines)
-        {
-            if (line.StartsWith("List of devices"))
-                continue;
-
-            var parts = line.Split(new[] { '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length >= 2 && parts[1] == "device")
-                devices.Add(parts[0]);
-        }
+        var devices = GetDevices();
 
         if (devices.Count == 0)
         {
@@ -59,6 +41,46 @@ public class AdbHelper
         Serial = devices[choice - 1];
         Console.Error.WriteLine($"[*] Using device: {Serial}");
         return true;
+    }
+
+    public List<string> GetDevices()
+    {
+        var (exit, stdout, stderr) = SystemHelper.RunProcess("adb", "devices", true);
+        var devices = new List<string>();
+        if (exit != 0)
+        {
+            return devices;
+        }
+
+        var lines = stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("List of devices"))
+                continue;
+
+            var parts = line.Split(new[] { '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2 && parts[1] == "device")
+                devices.Add(parts[0]);
+        }
+
+        return devices;
+    }
+
+    public bool Connect(string address)
+    {
+        var (exit, stdout, stderr) = SystemHelper.RunProcess("adb", $"connect {address}", true);
+        if (exit == 0 && stdout.Contains("connected to"))
+        {
+            // adb connect might not set Serial immediately if we want to use it, 
+            // but usually the address becomes the serial.
+            return true;
+        }
+        return false;
+    }
+
+    public void SetSerial(string serial)
+    {
+        Serial = serial;
     }
 
     public List<PackageInfo> SearchPackages(string keyword)
@@ -176,5 +198,18 @@ public class AdbHelper
     {
         var prefix = string.IsNullOrEmpty(Serial) ? "" : $"-s {Serial} ";
         return SystemHelper.RunProcess("adb", prefix + arguments, capture);
+    }
+
+    public (int ExitCode, string Stdout, string Stderr) RunLogcat(string packageName, int durationMs = 5000)
+    {
+        // Start app
+        var (exit, stdout, stderr) = RunAdb($"shell monkey -p {packageName} -c android.intent.category.LAUNCHER 1", true);
+        if (exit != 0) return (exit, stdout, stderr);
+
+        // Wait a bit for app to start and logs to be generated
+        Thread.Sleep(1000);
+
+        // Capture logcat (last 1000 lines or so for unity)
+        return RunAdb("logcat -d", true);
     }
 }
