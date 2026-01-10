@@ -18,7 +18,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var analyzer = new DummyUnityAnalyzer();               // Core 구현체
+            var analyzer = new UnityAnalyzer();               // Core 구현체
             var vm       = new MainWindowViewModel(analyzer); // ViewModel
 
             desktop.MainWindow = new MainWindow
