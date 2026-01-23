@@ -17,10 +17,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string? apkPath;
-
-    [ObservableProperty]
-    private string markdown = "";
-
+    
     [ObservableProperty]
     private string adbAddress = "127.0.0.1:5555";
 
@@ -96,7 +93,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void UpdateResult(AnalysisResult result)
     {
-        Markdown = result.Markdown;
         ResultUnityVersion = result.UnityVersion;
         ResultRenderPipeline = result.RenderPipeline;
         ResultEntitiesUsed = result.EntitiesUsed;
@@ -195,7 +191,6 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             StatusMessage = $"Error: {ex.Message}";
-            Markdown = $"# Error\n\n{ex}";
         }
     }
 

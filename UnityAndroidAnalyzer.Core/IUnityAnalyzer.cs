@@ -14,7 +14,6 @@ public class AnalysisResult
     public string EntitiesPhysicsUsed { get; set; } = "";
     public string UiToolkitUsed { get; set; } = "";
     public List<(string Script, int Count)> MajorScriptInsights { get; set; } = new();
-    public string Markdown { get; set; } = "";
     
     // 파일 경로 저장을 위한 필드
     public string? MetadataPath { get; set; }

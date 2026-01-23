@@ -205,41 +205,21 @@ public class Analyzer
         return "no";
     }
 
-    public static string DetectNgui(string scriptingAssembliesJson, byte[]? metadataBytes, UnityParsingData? parsingData)
+    public static bool DetectNgui(UnityParsingData? parsingData)
     {
-        // 1. MonoScript 목록에서 NGUI 검색
         if (parsingData != null)
         {
             foreach (var script in parsingData.AllMonoScripts)
             {
-                if (script.Contains("NGUI", StringComparison.OrdinalIgnoreCase))
+                // NGUI use UIOrthoCamera component 
+                if (script.Contains("UIOrthoCamera", StringComparison.OrdinalIgnoreCase))
                 {
-                    return "yes (Script)";
+                    return true;
                 }
             }
         }
 
-        bool hasNguiAssembly = false;
-        if (!string.IsNullOrEmpty(scriptingAssembliesJson))
-        {
-            if (scriptingAssembliesJson.IndexOf("NGUI", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                hasNguiAssembly = true;
-            }
-        }
-
-        bool hasNguiInMetadata = false;
-        if (metadataBytes != null && metadataBytes.Length > 0)
-        {
-            var s = ExtractPrintableAscii(metadataBytes);
-            if (s.IndexOf("NGUI", StringComparison.OrdinalIgnoreCase) >= 0)
-                hasNguiInMetadata = true;
-        }
-
-        if (hasNguiAssembly || hasNguiInMetadata)
-            return "yes";
-
-        return "no";
+        return false;
     }
 
     public static bool DetectAddressables(List<ZipArchive> zips)

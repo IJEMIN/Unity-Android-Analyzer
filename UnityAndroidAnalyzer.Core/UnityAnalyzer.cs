@@ -105,7 +105,7 @@ public class UnityAnalyzer : IUnityAnalyzer
 
         var rp = Analyzer.DetectRenderPipeline(metadataBytes);
         var entities = Analyzer.DetectEntities(scriptingAssembliesJson, runtimeInitJson, parsingData);
-        var ngui = Analyzer.DetectNgui(scriptingAssembliesJson, metadataBytes, parsingData);
+        var ngui = Analyzer.DetectNgui(parsingData) ? "Yes" : "No";
         var addr = Analyzer.DetectAddressables(zipArchives) ? "Yes" : "No";
         var insights = Analyzer.GetMajorScriptInsights(parsingData);
         var havok = Analyzer.DetectHavokPhysics(scriptingAssembliesJson, runtimeInitJson, metadataBytes);
@@ -134,33 +134,6 @@ public class UnityAnalyzer : IUnityAnalyzer
         }
         catch { /* Ignore */ }
 
-        var sb = new StringBuilder();
-        sb.AppendLine($"## {title}");
-        sb.AppendLine();
-        sb.AppendLine($"- **Unity Version:** `{unityVersion}`");
-        sb.AppendLine($"- **Render Pipeline:** `{rp}`");
-        sb.AppendLine($"- **Entities Used:** `{entities}`");
-        sb.AppendLine($"- **Entities Physics Used:** `{entPhys}`");
-        sb.AppendLine($"- **NGUI Used:** `{ngui}`");
-        sb.AppendLine($"- **Addressables Used:** `{addr}`");
-        sb.AppendLine($"- **Havok Used:** `{havok}`");
-        sb.AppendLine($"- **UI Toolkit Used:** `{uitk}`");
-        sb.AppendLine();
-        sb.AppendLine("### Major Script Insights");
-        sb.AppendLine();
-
-        if (insights.Count == 0)
-        {
-            sb.AppendLine("_No script information available._");
-        }
-        else
-        {
-            foreach (var (script, count) in insights)
-            {
-                sb.AppendLine($"- `{script}` ({count})");
-            }
-        }
-
         return new AnalysisResult
         {
             Title = title,
@@ -173,7 +146,6 @@ public class UnityAnalyzer : IUnityAnalyzer
             HavokUsed = havok,
             UiToolkitUsed = uitk,
             MajorScriptInsights = insights,
-            Markdown = sb.ToString(),
             MetadataPath = savedMetadataPath,
             ScriptingAssembliesPath = savedScriptingPath
         };
