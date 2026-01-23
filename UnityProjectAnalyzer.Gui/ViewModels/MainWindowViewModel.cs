@@ -122,27 +122,41 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public async Task RefreshDevicesAsync()
     {
-        var list = await Task.Run(() => _adb.GetDevices());
-        Devices.Clear();
-        foreach (var d in list) Devices.Add(d);
-        SelectedDevice = Devices.FirstOrDefault();
-        StatusMessage = $"Found {Devices.Count} devices.";
+        try
+        {
+            var list = await Task.Run(() => _adb.GetDevices());
+            Devices.Clear();
+            foreach (var d in list) Devices.Add(d);
+            SelectedDevice = Devices.FirstOrDefault();
+            StatusMessage = $"Found {Devices.Count} devices.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
     }
 
     public async Task ConnectAsync()
     {
         if (string.IsNullOrWhiteSpace(AdbAddress)) return;
         StatusMessage = $"Connecting to {AdbAddress}...";
-        var success = await Task.Run(() => _adb.Connect(AdbAddress));
-        if (success)
+        try
         {
-            StatusMessage = $"Connected to {AdbAddress}";
-            await RefreshDevicesAsync();
-            SelectedDevice = AdbAddress;
+            var success = await Task.Run(() => _adb.Connect(AdbAddress));
+            if (success)
+            {
+                StatusMessage = $"Connected to {AdbAddress}";
+                await RefreshDevicesAsync();
+                SelectedDevice = AdbAddress;
+            }
+            else
+            {
+                StatusMessage = $"Failed to connect to {AdbAddress}";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            StatusMessage = $"Failed to connect to {AdbAddress}";
+            StatusMessage = $"Error: {ex.Message}";
         }
     }
 
@@ -154,12 +168,19 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        _adb.SetSerial(SelectedDevice);
-        StatusMessage = $"Searching packages for '{SearchText}'...";
-        var list = await Task.Run(() => _adb.SearchPackages(SearchText));
-        Packages.Clear();
-        foreach (var p in list) Packages.Add(p);
-        StatusMessage = $"Found {Packages.Count} packages.";
+        try
+        {
+            _adb.SetSerial(SelectedDevice);
+            StatusMessage = $"Searching packages for '{SearchText}'...";
+            var list = await Task.Run(() => _adb.SearchPackages(SearchText));
+            Packages.Clear();
+            foreach (var p in list) Packages.Add(p);
+            StatusMessage = $"Found {Packages.Count} packages.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
     }
 
     public async Task AnalyzeLocalAsync()
@@ -167,10 +188,17 @@ public partial class MainWindowViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(ApkPath))
             return;
 
-        StatusMessage = "Analyzing local APK...";
-        var result = await _analyzer.AnalyzeLocalAsync(ApkPath, Array.Empty<string>());
-        UpdateResult(result);
-        StatusMessage = "Analysis complete.";
+        try
+        {
+            StatusMessage = "Analyzing local APK...";
+            var result = await _analyzer.AnalyzeLocalAsync(ApkPath, Array.Empty<string>());
+            UpdateResult(result);
+            StatusMessage = "Analysis complete.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
     }
 
     public async Task AnalyzeDeviceAsync()

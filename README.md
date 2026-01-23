@@ -52,13 +52,13 @@ Currently developed and tested primarily on **macOS (Apple Silicon)**.
 
 ## Building from Source (macOS)
 
-To generate a self-contained single binary, use the following command:
+To generate a macOS App Bundle (`UnityProjectAnalyzer.app`), use the following command:
 
 ```bash
 dotnet publish UnityProjectAnalyzer.Gui/UnityProjectAnalyzer.Gui.csproj -c Release -r osx-arm64
 ```
 
-The output will be generated in the `UnityProjectAnalyzer.Gui/bin/Release/net10.0/osx-arm64/publish/` folder.
+The output will be generated in the `UnityProjectAnalyzer.Gui/bin/Release/net10.0/osx-arm64/publish/UnityProjectAnalyzer.app` folder.
 
 ## License
 

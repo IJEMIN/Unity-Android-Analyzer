@@ -6,6 +6,38 @@ namespace UnityProjectAnalyzer.Core;
 public class AdbHelper
 {
     public string? Serial { get; private set; }
+    private string _adbPath = "adb";
+
+    public AdbHelper()
+    {
+        _adbPath = FindAdb();
+    }
+
+    private string FindAdb()
+    {
+        // 1. Check if adb is in PATH
+        try
+        {
+            var (exit, _, _) = SystemHelper.RunProcess("adb", "version", true, 2000);
+            if (exit == 0) return "adb";
+        }
+        catch { /* ignore */ }
+
+        // 2. Common macOS locations
+        var commonPaths = new[]
+        {
+            "/usr/local/bin/adb",
+            "/opt/homebrew/bin/adb",
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library/Android/sdk/platform-tools/adb")
+        };
+
+        foreach (var path in commonPaths)
+        {
+            if (File.Exists(path)) return path;
+        }
+
+        return "adb"; // fallback
+    }
 
     public bool SelectDevice()
     {
@@ -45,7 +77,7 @@ public class AdbHelper
 
     public List<string> GetDevices()
     {
-        var (exit, stdout, stderr) = SystemHelper.RunProcess("adb", "devices", true);
+        var (exit, stdout, stderr) = SystemHelper.RunProcess(_adbPath, "devices", true);
         var devices = new List<string>();
         if (exit != 0)
         {
@@ -68,7 +100,7 @@ public class AdbHelper
 
     public bool Connect(string address)
     {
-        var (exit, stdout, stderr) = SystemHelper.RunProcess("adb", $"connect {address}", true);
+        var (exit, stdout, stderr) = SystemHelper.RunProcess(_adbPath, $"connect {address}", true);
         if (exit == 0 && stdout.Contains("connected to"))
         {
             // adb connect might not set Serial immediately if we want to use it, 
@@ -197,7 +229,7 @@ public class AdbHelper
     private (int ExitCode, string Stdout, string Stderr) RunAdb(string arguments, bool capture)
     {
         var prefix = string.IsNullOrEmpty(Serial) ? "" : $"-s {Serial} ";
-        return SystemHelper.RunProcess("adb", prefix + arguments, capture);
+        return SystemHelper.RunProcess(_adbPath, prefix + arguments, capture);
     }
 
     public (int ExitCode, string Stdout, string Stderr) RunLogcat(string packageName, int durationMs = 5000)

@@ -7,6 +7,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <Version>1.0.0</Version>
+    <AssemblyName>UnityProjectAnalyzer</AssemblyName>
     <Authors>Jemin Lee</Authors>
     <Description>GUI frontend for UnityProjectAnalyzer</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -41,4 +42,23 @@
   <ItemGroup>
     <ProjectReference Include="..\UnityProjectAnalyzer.Core\UnityProjectAnalyzer.Core.csproj" />
   </ItemGroup>
+
+  <Target Name="CreateAppleBundle" AfterTargets="Publish" Condition="$(RuntimeIdentifier.StartsWith('osx'))">
+    <Message Text="Creating macOS App Bundle..." Importance="high" />
+    <PropertyGroup>
+      <AppBundleDir>$(PublishDir)UnityProjectAnalyzer.app</AppBundleDir>
+      <ContentsDir>$(AppBundleDir)/Contents</ContentsDir>
+      <MacOSDir>$(ContentsDir)/MacOS</MacOSDir>
+      <ResourcesDir>$(ContentsDir)/Resources</ResourcesDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <PublishFiles Include="$(PublishDir)*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(AppBundleDir)" />
+    <MakeDir Directories="$(MacOSDir);$(ResourcesDir)" />
+    <Copy SourceFiles="@(PublishFiles)" DestinationFolder="$(MacOSDir)" />
+    <Copy SourceFiles="Info.plist" DestinationFolder="$(ContentsDir)" />
+    <Exec Command="chmod +x &quot;$(MacOSDir)/UnityProjectAnalyzer&quot;" />
+    <Message Text="macOS App Bundle created at: $(AppBundleDir)" Importance="high" />
+  </Target>
 </Project>
