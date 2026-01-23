@@ -334,6 +334,31 @@ public class Analyzer
         return ms.ToArray();
     }
 
+    public static void AnalyzeDataUnity3D(List<ZipArchive> zips)
+    {
+        foreach (var zip in zips)
+        {
+            var data = ExtractEntryBytes(zip, "assets/bin/Data/data.unity3d");
+            if (data != null)
+            {
+                Console.WriteLine("[Analyzer] Found data.unity3d. Size: " + data.Length);
+                using var ms = new MemoryStream(data);
+                var reader = new UnityFsReader(ms);
+                reader.Read();
+            }
+
+            // Also check for level0
+            var level0 = ExtractEntryBytes(zip, "assets/bin/Data/level0");
+            if (level0 != null)
+            {
+                Console.WriteLine("[Analyzer] Found level0. Size: " + level0.Length);
+                using var ms = new MemoryStream(level0);
+                var reader = new UnityAssetsReader(ms);
+                reader.Read();
+            }
+        }
+    }
+
     public static string DetectUiToolkit(List<ZipArchive> zips)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "UnityAndroidAnalyzer", "UiToolkitAnalysis_" + Guid.NewGuid().ToString("N"));

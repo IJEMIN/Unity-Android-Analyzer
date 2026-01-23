@@ -107,6 +107,9 @@ public class UnityAnalyzer : IUnityAnalyzer
         var havok = Analyzer.DetectHavokPhysics(scriptingAssembliesJson, runtimeInitJson, metadataBytes);
         var uitk = Analyzer.DetectUiToolkit(zipArchives);
 
+        // data.unity3d 분석 테스트
+        Analyzer.AnalyzeDataUnity3D(zipArchives);
+
         // 추출된 파일들을 임시 디렉토리에 저장하여 나중에 열어볼 수 있게 함
         string? savedMetadataPath = null;
         string? savedScriptingPath = null;
