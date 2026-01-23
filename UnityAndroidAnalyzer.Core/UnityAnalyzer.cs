@@ -5,6 +5,9 @@ namespace UnityAndroidAnalyzer.Core;
 
 public class UnityAnalyzer : IUnityAnalyzer
 {
+    public string DownloadRootPath { get; set; } = 
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "UnityAndroidAnalyzer");
+
     public async Task<AnalysisResult> AnalyzeLocalAsync(string apkPath, IEnumerable<string> obbPaths)
     {
         var containerPaths = new List<string> { apkPath };
@@ -42,7 +45,7 @@ public class UnityAnalyzer : IUnityAnalyzer
         var adb = new AdbHelper();
         adb.SetSerial(deviceSerial);
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "UnityAndroidAnalyzer", packageName);
+        var tempDir = Path.Combine(DownloadRootPath, packageName);
         if (Directory.Exists(tempDir))
         {
             Directory.Delete(tempDir, true);
@@ -76,15 +79,17 @@ public class UnityAnalyzer : IUnityAnalyzer
                 throw new Exception("Failed to pull APK from device.");
             }
 
-            // 첫 번째 APK를 메인으로 사용
-            return await AnalyzeLocalAsync(localApkPaths[0], localApkPaths.Skip(1).Concat(localObbPaths));
+            // 분석 수행
+            var result = await AnalyzeLocalAsync(localApkPaths[0], localApkPaths.Skip(1).Concat(localObbPaths));
+            
+            // 임시 파일 경로 저장 (GUI에서 열기 기능을 위해)
+            var metadataPath = Path.Combine(tempDir, "global-metadata.dat");
+            var scriptingAssembliesPath = Path.Combine(tempDir, "ScriptingAssemblies.json");
+            
+            return result;
         }
         finally
         {
-            // 임시 파일 삭제는 분석이 끝난 후에 하는 것이 좋으나, 
-            // AnalyzeLocalAsync가 ZipArchive를 닫을 때까지 기다려야 하므로 
-            // 호출 측에서 처리하거나 적절한 시점에 삭제가 필요함.
-            // 여기서는 일단 남겨두거나 명시적인 정리가 필요할 수 있음.
         }
     }
 
@@ -96,9 +101,33 @@ public class UnityAnalyzer : IUnityAnalyzer
         var metadataBytes = Analyzer.ExtractMetadataFromContainers(zipArchives);
         var rp = Analyzer.DetectRenderPipeline(metadataBytes);
         var entities = Analyzer.DetectEntities(scriptingAssembliesJson, runtimeInitJson);
+        var ngui = Analyzer.DetectNgui(scriptingAssembliesJson, metadataBytes);
         var addr = Analyzer.DetectAddressables(zipArchives) ? "Yes" : "No";
         var nsList = Analyzer.DetectMajorNamespaces(metadataBytes);
         var havok = Analyzer.DetectHavokPhysics(scriptingAssembliesJson, runtimeInitJson, metadataBytes);
+        var uitk = Analyzer.DetectUiToolkit(zipArchives);
+
+        // 추출된 파일들을 임시 디렉토리에 저장하여 나중에 열어볼 수 있게 함
+        string? savedMetadataPath = null;
+        string? savedScriptingPath = null;
+        try
+        {
+            var tempDir = Path.Combine(DownloadRootPath, "LastAnalysis");
+            if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
+
+            if (metadataBytes != null)
+            {
+                savedMetadataPath = Path.Combine(tempDir, "global-metadata.dat");
+                File.WriteAllBytes(savedMetadataPath, metadataBytes);
+            }
+
+            if (!string.IsNullOrEmpty(scriptingAssembliesJson))
+            {
+                savedScriptingPath = Path.Combine(tempDir, "ScriptingAssemblies.json");
+                File.WriteAllText(savedScriptingPath, scriptingAssembliesJson);
+            }
+        }
+        catch { /* Ignore */ }
 
         var sb = new StringBuilder();
         sb.AppendLine($"## {title}");
@@ -106,8 +135,10 @@ public class UnityAnalyzer : IUnityAnalyzer
         sb.AppendLine($"- **Unity Version:** `{unityVersion}`");
         sb.AppendLine($"- **Render Pipeline:** `{rp}`");
         sb.AppendLine($"- **Entities Used:** `{entities}`");
+        sb.AppendLine($"- **NGUI Used:** `{ngui}`");
         sb.AppendLine($"- **Addressables Used:** `{addr}`");
         sb.AppendLine($"- **Havok Used:** `{havok}`");
+        sb.AppendLine($"- **UI Toolkit Used:** `{uitk}`");
         sb.AppendLine();
         sb.AppendLine("### Major Namespaces (top 30)");
         sb.AppendLine();
@@ -130,10 +161,14 @@ public class UnityAnalyzer : IUnityAnalyzer
             UnityVersion = unityVersion,
             RenderPipeline = rp,
             EntitiesUsed = entities,
+            NguiUsed = ngui,
             AddressablesUsed = addr,
             HavokUsed = havok,
+            UiToolkitUsed = uitk,
             MajorNamespaces = nsList,
-            Markdown = sb.ToString()
+            Markdown = sb.ToString(),
+            MetadataPath = savedMetadataPath,
+            ScriptingAssembliesPath = savedScriptingPath
         };
     }
 }

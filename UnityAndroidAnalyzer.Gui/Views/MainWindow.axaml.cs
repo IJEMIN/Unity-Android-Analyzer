@@ -44,4 +44,21 @@ public partial class MainWindow : Window
 
         await vm.AnalyzeLocalAsync();
     }
+
+    private async void ChangeDownloadPath_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select Download Root Path",
+            AllowMultiple = false
+        });
+
+        if (folders is { Count: > 0 })
+        {
+            vm.DownloadRootPath = folders[0].Path.LocalPath;
+        }
+    }
 }

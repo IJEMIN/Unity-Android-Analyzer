@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -41,21 +42,85 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private PackageInfo? selectedPackage;
 
+    [ObservableProperty]
+    private string downloadRootPath = "";
+
+    // 분석 결과 필드들
+    [ObservableProperty] private string resultUnityVersion = "";
+    [ObservableProperty] private string resultRenderPipeline = "";
+    [ObservableProperty] private string resultEntitiesUsed = "";
+    [ObservableProperty] private string resultNguiUsed = "";
+    [ObservableProperty] private string resultAddressablesUsed = "";
+    [ObservableProperty] private string resultHavokUsed = "";
+    [ObservableProperty] private string resultUiToolkitUsed = "";
+    [ObservableProperty] private ObservableCollection<string> resultMajorNamespaces = new();
+
+    private string? _currentMetadataPath;
+    private string? _currentScriptingPath;
+
     public MainWindowViewModel(IUnityAnalyzer analyzer)
     {
         _analyzer = analyzer;
+        downloadRootPath = _analyzer.DownloadRootPath;
+
         RefreshDevicesCommand = new AsyncRelayCommand(RefreshDevicesAsync);
         ConnectCommand = new AsyncRelayCommand(ConnectAsync);
         SearchPackagesCommand = new AsyncRelayCommand(SearchPackagesAsync);
         AnalyzeDeviceCommand = new AsyncRelayCommand(AnalyzeDeviceAsync);
-        RunLogcatCommand = new AsyncRelayCommand(RunLogcatAsync);
+        OpenMetadataCommand = new RelayCommand(OpenMetadata);
+        OpenAssembliesCommand = new RelayCommand(OpenAssemblies);
+        ChangeDownloadPathCommand = new AsyncRelayCommand(ChangeDownloadPathAsync);
     }
 
     public IAsyncRelayCommand RefreshDevicesCommand { get; }
     public IAsyncRelayCommand ConnectCommand { get; }
     public IAsyncRelayCommand SearchPackagesCommand { get; }
     public IAsyncRelayCommand AnalyzeDeviceCommand { get; }
-    public IAsyncRelayCommand RunLogcatCommand { get; }
+    public IRelayCommand OpenMetadataCommand { get; }
+    public IRelayCommand OpenAssembliesCommand { get; }
+    public IAsyncRelayCommand ChangeDownloadPathCommand { get; }
+
+    partial void OnDownloadRootPathChanged(string value)
+    {
+        _analyzer.DownloadRootPath = value;
+    }
+
+    public async Task ChangeDownloadPathAsync()
+    {
+        // View에서 처리하도록 이벤트를 주거나, 직접 FileDialog를 띄울 수 없으므로 
+        // 일단 ViewModel에서는 로직만 준비하고 View에서 호출하게 함.
+        // 하지만 여기서는 CommunityToolkit.Mvvm을 쓰고 있으므로, 
+        // 실제 구현은 View의 비하인드 코드에서 처리하는 것이 일반적임.
+    }
+
+    private void UpdateResult(AnalysisResult result)
+    {
+        Markdown = result.Markdown;
+        ResultUnityVersion = result.UnityVersion;
+        ResultRenderPipeline = result.RenderPipeline;
+        ResultEntitiesUsed = result.EntitiesUsed;
+        ResultNguiUsed = result.NguiUsed;
+        ResultAddressablesUsed = result.AddressablesUsed;
+        ResultHavokUsed = result.HavokUsed;
+        
+        if (result.UiToolkitUsed.Contains("yes", StringComparison.OrdinalIgnoreCase))
+        {
+            ResultUiToolkitUsed = "Runtime UIToolkit Detected";
+        }
+        else
+        {
+            ResultUiToolkitUsed = result.UiToolkitUsed;
+        }
+        
+        ResultMajorNamespaces.Clear();
+        foreach (var ns in result.MajorNamespaces)
+        {
+            ResultMajorNamespaces.Add($"{ns.Namespace} ({ns.Count})");
+        }
+
+        _currentMetadataPath = result.MetadataPath;
+        _currentScriptingPath = result.ScriptingAssembliesPath;
+    }
 
     public async Task RefreshDevicesAsync()
     {
@@ -106,7 +171,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         StatusMessage = "Analyzing local APK...";
         var result = await _analyzer.AnalyzeLocalAsync(ApkPath, Array.Empty<string>());
-        Markdown = result.Markdown;
+        UpdateResult(result);
         StatusMessage = "Analysis complete.";
     }
 
@@ -119,32 +184,54 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         StatusMessage = $"Analyzing {SelectedPackage.PackageName} on {SelectedDevice}...";
-        var result = await _analyzer.AnalyzeDeviceAsync(SelectedDevice, SelectedPackage.PackageName);
-        Markdown = result.Markdown;
-        StatusMessage = "Analysis complete.";
+        try
+        {
+            var result = await _analyzer.AnalyzeDeviceAsync(SelectedDevice, SelectedPackage.PackageName);
+            UpdateResult(result);
+            StatusMessage = "Analysis complete.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+            Markdown = $"# Error\n\n{ex}";
+        }
     }
 
-    public async Task RunLogcatAsync()
+    private void OpenMetadata()
     {
-        if (string.IsNullOrEmpty(SelectedDevice) || SelectedPackage == null)
+        if (string.IsNullOrEmpty(_currentMetadataPath) || !File.Exists(_currentMetadataPath))
         {
-            StatusMessage = "Select device and package first.";
+            StatusMessage = "Metadata file not available. Run analysis first.";
             return;
         }
+        OpenFileWithDefaultEditor(_currentMetadataPath);
+    }
 
-        StatusMessage = $"Running {SelectedPackage.PackageName} and capturing logs...";
-        _adb.SetSerial(SelectedDevice);
-        var (exit, stdout, stderr) = await Task.Run(() => _adb.RunLogcat(SelectedPackage.PackageName));
-
-        if (exit == 0)
+    private void OpenAssemblies()
+    {
+        if (string.IsNullOrEmpty(_currentScriptingPath) || !File.Exists(_currentScriptingPath))
         {
-            Markdown = $"# Logcat Output for {SelectedPackage.PackageName}\n\n```\n{stdout}\n```";
-            StatusMessage = "Logs captured.";
+            StatusMessage = "ScriptingAssemblies file not available. Run analysis first.";
+            return;
         }
-        else
+        OpenFileWithDefaultEditor(_currentScriptingPath);
+    }
+
+    private void OpenFileWithDefaultEditor(string path)
+    {
+        try
         {
-            Markdown = $"# Logcat Error\n\n```\n{stderr}\n```";
-            StatusMessage = "Failed to capture logs.";
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            };
+            process.Start();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to open file: {ex.Message}";
         }
     }
 }

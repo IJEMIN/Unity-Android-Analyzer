@@ -8,14 +8,21 @@ public class AnalysisResult
     public string UnityVersion { get; set; } = "";
     public string RenderPipeline { get; set; } = "";
     public string EntitiesUsed { get; set; } = "";
+    public string NguiUsed { get; set; } = "";
     public string AddressablesUsed { get; set; } = "";
     public string HavokUsed { get; set; } = "";
+    public string UiToolkitUsed { get; set; } = "";
     public List<(string Namespace, int Count)> MajorNamespaces { get; set; } = new();
     public string Markdown { get; set; } = "";
+    
+    // 파일 경로 저장을 위한 필드
+    public string? MetadataPath { get; set; }
+    public string? ScriptingAssembliesPath { get; set; }
 }
 
 public interface IUnityAnalyzer
 {
+    string DownloadRootPath { get; set; }
     Task<AnalysisResult> AnalyzeLocalAsync(string apkPath, IEnumerable<string> obbPaths);
     Task<AnalysisResult> AnalyzeDeviceAsync(string deviceSerial, string packageName);
 }

@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace UnityAndroidAnalyzer.Core;
 
@@ -199,6 +200,31 @@ public class Analyzer
         return "no";
     }
 
+    public static string DetectNgui(string scriptingAssembliesJson, byte[]? metadataBytes)
+    {
+        bool hasNguiAssembly = false;
+        if (!string.IsNullOrEmpty(scriptingAssembliesJson))
+        {
+            if (scriptingAssembliesJson.IndexOf("NGUI", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                hasNguiAssembly = true;
+            }
+        }
+
+        bool hasNguiInMetadata = false;
+        if (metadataBytes != null && metadataBytes.Length > 0)
+        {
+            var s = ExtractPrintableAscii(metadataBytes);
+            if (s.IndexOf("NGUI", StringComparison.OrdinalIgnoreCase) >= 0)
+                hasNguiInMetadata = true;
+        }
+
+        if (hasNguiAssembly || hasNguiInMetadata)
+            return "yes";
+
+        return "no";
+    }
+
     public static bool DetectAddressables(List<ZipArchive> zips)
     {
         foreach (var z in zips)
@@ -306,5 +332,95 @@ public class Analyzer
             s.CopyTo(ms);
 
         return ms.ToArray();
+    }
+
+    public static string DetectUiToolkit(List<ZipArchive> zips)
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "UnityAndroidAnalyzer", "UiToolkitAnalysis_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var dbPath = Path.Combine(tempDir, "analysis.db");
+
+        try
+        {
+            bool foundDataFiles = false;
+            foreach (var zip in zips)
+            {
+                foreach (var entry in zip.Entries)
+                {
+                    if (entry.FullName.StartsWith("assets/bin/Data/") && 
+                        (entry.FullName.EndsWith(".assets") || 
+                         entry.FullName.EndsWith(".sharedassets") || 
+                         entry.FullName.Contains("globalgamemanagers")))
+                    {
+                        var targetPath = Path.Combine(tempDir, Path.GetFileName(entry.FullName));
+                        entry.ExtractToFile(targetPath, true);
+                        foundDataFiles = true;
+                    }
+                }
+            }
+
+            if (!foundDataFiles) return "no (no data files)";
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "UnityDataTool",
+                Arguments = $"analyze \"{tempDir}\" -o \"{dbPath}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process == null) return "error (UnityDataTool not found)";
+            process.WaitForExit();
+
+            if (!File.Exists(dbPath)) return "no (analysis.db not created)";
+
+            bool hasUiToolkit = false;
+            try
+            {
+                var queryStartInfo = new ProcessStartInfo
+                {
+                    FileName = "sqlite3",
+                    Arguments = $"\"{dbPath}\" \"SELECT COUNT(*) FROM types WHERE name IN ('PanelSettings', 'UIDocument', 'PanelRenderer');\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var queryProcess = Process.Start(queryStartInfo);
+                if (queryProcess != null)
+                {
+                    var output = queryProcess.StandardOutput.ReadToEnd().Trim();
+                    queryProcess.WaitForExit();
+                    if (int.TryParse(output, out int count) && count > 0)
+                    {
+                        hasUiToolkit = true;
+                    }
+                }
+            }
+            catch
+            {
+                return "error (sqlite3 query failed)";
+            }
+
+            return hasUiToolkit ? "yes" : "no";
+        }
+        catch (Exception ex)
+        {
+            return $"error ({ex.Message})";
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+            }
+            catch { /* Ignore cleanup errors */ }
+        }
     }
 }
