@@ -336,25 +336,71 @@ public class Analyzer
 
     public static void AnalyzeDataUnity3D(List<ZipArchive> zips)
     {
+        UnityAssetsReader.ClearCache();
+
+        // Pass 1: Collect MonoScripts from all assets
+        Console.WriteLine("[Analyzer] Pass 1: Collecting MonoScripts...");
+        ProcessAllAssets(zips, true);
+
+        // Pass 2: Analyze GameObjects
+        Console.WriteLine("[Analyzer] Pass 2: Analyzing GameObjects...");
+        ProcessAllAssets(zips, false);
+    }
+
+    private static void ProcessAllAssets(List<ZipArchive> zips, bool scriptsOnly)
+    {
         foreach (var zip in zips)
         {
+            // 1. Process data.unity3d
             var data = ExtractEntryBytes(zip, "assets/bin/Data/data.unity3d");
             if (data != null)
             {
-                Console.WriteLine("[Analyzer] Found data.unity3d. Size: " + data.Length);
+                if (!scriptsOnly)
+                    Console.WriteLine("[Analyzer] Found data.unity3d. Size: " + data.Length);
                 using var ms = new MemoryStream(data);
                 var reader = new UnityFsReader(ms);
-                reader.Read();
+                reader.Read(scriptsOnly);
             }
 
-            // Also check for level0
-            var level0 = ExtractEntryBytes(zip, "assets/bin/Data/level0");
-            if (level0 != null)
+            // 2. Process other potential assets in APK
+            foreach (var entry in zip.Entries)
             {
-                Console.WriteLine("[Analyzer] Found level0. Size: " + level0.Length);
-                using var ms = new MemoryStream(level0);
-                var reader = new UnityAssetsReader(ms);
-                reader.Read();
+                var name = entry.FullName.Replace("\\", "/");
+                if (!name.StartsWith("assets/bin/Data/")) continue;
+                
+                // data.unity3d already handled
+                if (name == "assets/bin/Data/data.unity3d") continue;
+                
+                // Skip known non-asset extensions
+                if (name.EndsWith(".resS") || name.EndsWith(".resource") || name.EndsWith(".resourceBatch") || name.EndsWith(".bundle")) continue;
+
+                // Typical asset files
+                bool isPotentialAsset = name.EndsWith(".assets", StringComparison.OrdinalIgnoreCase) || 
+                                        name.EndsWith(".sharedassets", StringComparison.OrdinalIgnoreCase) || 
+                                        name.Contains("globalgamemanagers", StringComparison.OrdinalIgnoreCase) || 
+                                        name.Contains("level", StringComparison.OrdinalIgnoreCase) ||
+                                        name.Contains("unity_builtin_extra", StringComparison.OrdinalIgnoreCase) ||
+                                        name.Contains("unity default resources", StringComparison.OrdinalIgnoreCase);
+                
+                if (isPotentialAsset)
+                {
+                    var entryData = ExtractEntryBytes(zip, name);
+                    if (entryData != null && entryData.Length > 20) // Minimum header size
+                    {
+                        if (!scriptsOnly)
+                            Console.WriteLine($"[Analyzer] Found potential asset file in APK: {name}. Size: {entryData.Length}");
+                        try
+                        {
+                            using var ms = new MemoryStream(entryData);
+                            var reader = new UnityAssetsReader(ms);
+                            reader.Read(Path.GetFileName(name), scriptsOnly);
+                        }
+                        catch (Exception)
+                        {
+                            // Some might not be valid assets files despite name
+                        }
+                    }
+                }
             }
         }
     }

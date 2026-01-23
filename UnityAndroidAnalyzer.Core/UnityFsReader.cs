@@ -16,7 +16,7 @@ public class UnityFsReader
         _reader = new BinaryReader(stream, Encoding.UTF8);
     }
 
-    public void Read()
+    public void Read(bool scriptsOnly = false)
     {
         string signature = ReadStringNullTerminated();
         _version = ReadInt32BE();
@@ -24,7 +24,8 @@ public class UnityFsReader
         string unityRevision = ReadStringNullTerminated();
         long size = ReadInt64BE();
 
-        Console.WriteLine($"[UnityFS] Signature: {signature}, Version: {_version}, Unity: {_unityVersion}, Size: {size}");
+        if (!scriptsOnly)
+            Console.WriteLine($"[UnityFS] Signature: {signature}, Version: {_version}, Unity: {_unityVersion}, Size: {size}");
 
         if (signature != "UnityFS") return;
 
@@ -32,7 +33,8 @@ public class UnityFsReader
         int uncompressedSize = ReadInt32BE();
         int flags = ReadInt32BE();
 
-        Console.WriteLine($"[UnityFS] Blocks Info: compressedSize={compressedSize}, uncompressedSize={uncompressedSize}, flags=0x{flags:X}");
+        if (!scriptsOnly)
+            Console.WriteLine($"[UnityFS] Blocks Info: compressedSize={compressedSize}, uncompressedSize={uncompressedSize}, flags=0x{flags:X}");
 
         // Read Block Info
         byte[] blockInfoBytes;
@@ -61,7 +63,8 @@ public class UnityFsReader
                 long alignedPos = (_stream.Position + 15) & ~15;
                 if (alignedPos != _stream.Position)
                 {
-                    Console.WriteLine($"[UnityFS] Aligning header from {_stream.Position} to {alignedPos}");
+                    if (!scriptsOnly)
+                        Console.WriteLine($"[UnityFS] Aligning header from {_stream.Position} to {alignedPos}");
                     _stream.Position = alignedPos;
                 }
             }
@@ -107,7 +110,8 @@ public class UnityFsReader
 
             if (decoded != uncompressedSize && decoded > 0)
             {
-                Console.WriteLine($"[UnityFS] LZ4 decoded size mismatch. Expected {uncompressedSize}, got {decoded}. Proceeding with decoded size.");
+                if (!scriptsOnly)
+                    Console.WriteLine($"[UnityFS] LZ4 decoded size mismatch. Expected {uncompressedSize}, got {decoded}. Proceeding with decoded size.");
                 // Some Unity versions might have slightly different sizes due to alignment or header nuances.
             }
             else if (decoded <= 0)
@@ -130,7 +134,8 @@ public class UnityFsReader
         biReader.ReadBytes(16);
 
         int blockCount = ReadInt32BE(biReader);
-        Console.WriteLine($"[UnityFS] Block Count: {blockCount}, Blocks Starting Pos: {blocksStartingPos}");
+        if (!scriptsOnly)
+            Console.WriteLine($"[UnityFS] Block Count: {blockCount}, Blocks Starting Pos: {blocksStartingPos}");
 
         var blocks = new List<StorageBlock>();
         for (int i = 0; i < blockCount; i++)
@@ -146,7 +151,8 @@ public class UnityFsReader
         }
 
         int nodeCount = ReadInt32BE(biReader);
-        Console.WriteLine($"[UnityFS] Node Count: {nodeCount}");
+        if (!scriptsOnly)
+            Console.WriteLine($"[UnityFS] Node Count: {nodeCount}");
 
         for (int i = 0; i < nodeCount; i++)
         {
@@ -154,25 +160,46 @@ public class UnityFsReader
             long nodeSize = ReadInt64BE(biReader);
             int nodeFlags = ReadInt32BE(biReader);
             string path = ReadStringNullTerminated(biReader);
-            Console.WriteLine($"[UnityFS] Node: {path}, Size: {nodeSize}, Offset: {offset}, Flags: 0x{nodeFlags:X}");
+            
+            if (!scriptsOnly)
+                Console.WriteLine($"[UnityFS] Node: {path}, Size: {nodeSize}, Offset: {offset}, Flags: 0x{nodeFlags:X}");
             
             // Handle Assets or SharedAssets
-            if (path.EndsWith(".assets") || path.EndsWith(".sharedassets") || path.Contains("globalgamemanagers") || path.StartsWith("level") || path.EndsWith(".unity3d"))
+            bool isSerialized = (nodeFlags & 0x04) != 0;
+            bool isAssets = path.EndsWith(".assets", StringComparison.OrdinalIgnoreCase) || 
+                            path.EndsWith(".sharedassets", StringComparison.OrdinalIgnoreCase) || 
+                            path.Contains("globalgamemanagers", StringComparison.OrdinalIgnoreCase) || 
+                            path.StartsWith("level", StringComparison.OrdinalIgnoreCase) || 
+                            path.Contains("unity_builtin_extra", StringComparison.OrdinalIgnoreCase) ||
+                            path.Contains("unity default resources", StringComparison.OrdinalIgnoreCase);
+            
+            if (isSerialized || isAssets)
             {
                 // Skip nodes that are likely just resource containers and too large or non-assets
-                if (path.EndsWith(".resS") || path.EndsWith(".resource")) continue;
-                Console.WriteLine($"[UnityFS] Parsing embedded assets file: {path}");
+                if (path.EndsWith(".resS") || path.EndsWith(".resource"))
+                {
+                    if (!scriptsOnly)
+                        Console.WriteLine($"[UnityFS] Skipping resource node: {path}");
+                    continue;
+                }
+                
+                if (!scriptsOnly)
+                    Console.WriteLine($"[UnityFS] Parsing embedded assets file: {path} (Flags: 0x{nodeFlags:X}, Serialized: {isSerialized})");
                 try
                 {
                     byte[] nodeData = ExtractNodeData(blocks, blocksStartingPos, offset, nodeSize);
                     using var nodeMs = new MemoryStream(nodeData);
                     var assetsReader = new UnityAssetsReader(nodeMs);
-                    assetsReader.Read();
+                    assetsReader.Read(Path.GetFileName(path), scriptsOnly);
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[UnityFS] Failed to parse node {path}: {ex.Message}");
                 }
+            }
+            else
+            {
+                // Console.WriteLine($"[UnityFS] Skipping non-asset node: {path}");
             }
         }
     }
