@@ -10,6 +10,12 @@
     <Authors>Jemin Lee</Authors>
     <Description>GUI frontend for UnityProjectAnalyzer</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    
+    <!-- Publish settings -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
