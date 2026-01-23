@@ -1,5 +1,6 @@
 # Unity Project Analyzer (v1.0)
 
+![thumbnail](front-image.png)
 A tool for analyzing Unity project build artifacts (APK, OBB) to identify the engine version, render pipeline, major libraries, and technology stack used.
 
 ## Key Features
