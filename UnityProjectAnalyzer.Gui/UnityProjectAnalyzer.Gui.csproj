@@ -14,7 +14,8 @@
     
     <!-- Publish settings -->
     <SelfContained>true</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
+    <PublishSingleFile Condition="!$([MSBuild]::IsOSPlatform('osx'))">true</PublishSingleFile>
+    <PublishSingleFile Condition="$([MSBuild]::IsOSPlatform('osx'))">false</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
