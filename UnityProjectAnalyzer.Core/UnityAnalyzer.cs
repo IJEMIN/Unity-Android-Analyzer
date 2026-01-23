@@ -1,12 +1,12 @@
 using System.IO.Compression;
 using System.Text;
 
-namespace UnityAndroidAnalyzer.Core;
+namespace UnityProjectAnalyzer.Core;
 
 public class UnityAnalyzer : IUnityAnalyzer
 {
     public string DownloadRootPath { get; set; } = 
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "UnityAndroidAnalyzer");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "UnityProjectAnalyzer");
 
     public async Task<AnalysisResult> AnalyzeLocalAsync(string apkPath, IEnumerable<string> obbPaths)
     {

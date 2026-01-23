@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 
-namespace UnityAndroidAnalyzer.Core;
+namespace UnityProjectAnalyzer.Core;
 
 public static class SystemHelper
 {

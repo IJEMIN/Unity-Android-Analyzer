@@ -1,7 +1,7 @@
 using System.Text;
 using System.Collections.Generic;
 
-namespace UnityAndroidAnalyzer.Core;
+namespace UnityProjectAnalyzer.Core;
 
 public class UnityAssetsReader
 {

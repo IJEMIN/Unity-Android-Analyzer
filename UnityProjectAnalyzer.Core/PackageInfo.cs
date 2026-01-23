@@ -1,4 +1,4 @@
-namespace UnityAndroidAnalyzer.Core;
+namespace UnityProjectAnalyzer.Core;
 
 
 // ======================================================

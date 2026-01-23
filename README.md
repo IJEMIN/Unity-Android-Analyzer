@@ -1,6 +1,6 @@
-# Unity Android Analyzer
+# Unity Project Analyzer
 
-C# console tool for inspecting Unity Android builds (APK / OBB) and apps installed on a connected device.
+C# tool for inspecting Unity builds and apps. Currently supports Android (APK / OBB) and apps installed on a connected device.
 Outputs all results in Markdown format.
 
 ## Features

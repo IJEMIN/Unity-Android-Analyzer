@@ -1,7 +1,7 @@
 using System.Text;
 using K4os.Compression.LZ4;
 
-namespace UnityAndroidAnalyzer.Core;
+namespace UnityProjectAnalyzer.Core;
 
 public class UnityFsReader
 {

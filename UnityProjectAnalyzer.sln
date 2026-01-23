@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityAndroidAnalyzer.Core", "UnityAndroidAnalyzer.Core\UnityAndroidAnalyzer.Core.csproj", "{F8CE0A0F-8295-4270-9A83-BCE9A5F2C613}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityProjectAnalyzer.Core", "UnityProjectAnalyzer.Core\UnityProjectAnalyzer.Core.csproj", "{F8CE0A0F-8295-4270-9A83-BCE9A5F2C613}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityAndroidAnalyzer.Gui", "UnityAndroidAnalyzer.Gui\UnityAndroidAnalyzer.Gui.csproj", "{1DCF10D8-9336-438D-B4B8-78A8CF85DDB7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityProjectAnalyzer.Gui", "UnityProjectAnalyzer.Gui\UnityProjectAnalyzer.Gui.csproj", "{1DCF10D8-9336-438D-B4B8-78A8CF85DDB7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

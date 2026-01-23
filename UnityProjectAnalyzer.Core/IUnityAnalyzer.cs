@@ -1,6 +1,6 @@
-namespace UnityAndroidAnalyzer.Core;
+namespace UnityProjectAnalyzer.Core;
 
-// UnityAndroidAnalyzer.Core
+// UnityProjectAnalyzer.Core
 
 public class AnalysisResult
 {

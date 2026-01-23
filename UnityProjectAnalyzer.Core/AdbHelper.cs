@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace UnityAndroidAnalyzer.Core;
+namespace UnityProjectAnalyzer.Core;
 
 
 public class AdbHelper
