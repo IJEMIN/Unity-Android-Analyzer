@@ -18,14 +18,14 @@ public class Analyzer
         string runtimeInitJson,
         byte[]? metadataBytes)
     {
-        bool hasHavokAssembly = false;
+        // 1. ScriptingAssemblies.json 확인 (가장 확실)
         if (!string.IsNullOrEmpty(scriptingAssembliesJson))
         {
             var s = scriptingAssembliesJson;
             if (s.IndexOf("Havok.Physics", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 s.IndexOf("com.havok.physics", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                hasHavokAssembly = true;
+                return "yes (Assembly)";
             }
         }
 
@@ -47,8 +47,7 @@ public class Analyzer
                 hasHavokInMetadata = true;
         }
 
-        // 최소 한 군데 이상 등장하면 사용한다고 본다
-        if (hasHavokAssembly || hasHavokRuntime || hasHavokInMetadata)
+        if (hasHavokRuntime || hasHavokInMetadata)
             return "yes";
 
         return "no";
@@ -168,9 +167,15 @@ public class Analyzer
         return m.Success ? m.Value : null;
     }
 
-    public static string DetectEntities(string scriptingAssembliesJson, string runtimeInitJson)
+    public static string DetectEntities(string scriptingAssembliesJson, string runtimeInitJson, UnityParsingData? parsingData)
     {
-        // 기준 1: ScriptingAssemblies.json에 Entities 관련 어셈블리 있는지
+        // 1. Scene에서 SubScene 컴포넌트 사용 여부 확인 (가장 확실한 증거)
+        if (parsingData != null && parsingData.SceneComponents.Contains("SubScene"))
+        {
+            return "yes (Scene)";
+        }
+
+        // 기준 2: ScriptingAssemblies.json에 Entities 관련 어셈블리 있는지
         bool hasEntitiesAssembly = false;
         if (!string.IsNullOrEmpty(scriptingAssembliesJson))
         {
@@ -182,7 +187,7 @@ public class Analyzer
             }
         }
 
-        // 기준 2: RuntimeInitializeOnLoads.json에 Entities 관련 타입/어셈블리 초기화 항목이 있는지
+        // 기준 3: RuntimeInitializeOnLoads.json에 Entities 관련 타입/어셈블리 초기화 항목이 있는지
         bool hasEntitiesRuntime = false;
         if (!string.IsNullOrEmpty(runtimeInitJson))
         {
@@ -200,8 +205,20 @@ public class Analyzer
         return "no";
     }
 
-    public static string DetectNgui(string scriptingAssembliesJson, byte[]? metadataBytes)
+    public static string DetectNgui(string scriptingAssembliesJson, byte[]? metadataBytes, UnityParsingData? parsingData)
     {
+        // 1. MonoScript 목록에서 NGUI 검색
+        if (parsingData != null)
+        {
+            foreach (var script in parsingData.AllMonoScripts)
+            {
+                if (script.Contains("NGUI", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "yes (Script)";
+                }
+            }
+        }
+
         bool hasNguiAssembly = false;
         if (!string.IsNullOrEmpty(scriptingAssembliesJson))
         {
@@ -264,51 +281,41 @@ public class Analyzer
         return string.Empty;
     }
     
-    public static List<(string ns, int count)> DetectMajorNamespaces(byte[]? metadataBytes)
+    public static List<(string Script, int Count)> GetMajorScriptInsights(UnityParsingData? parsingData)
     {
         var result = new List<(string, int)>();
+        if (parsingData == null) return result;
 
-        if (metadataBytes == null || metadataBytes.Length == 0)
-            return result;
-
-        var s = Analyzer.ExtractPrintableAscii(metadataBytes);
-        var lines = s.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        var dict = new Dictionary<string, int>(StringComparer.Ordinal);
-        var regex = new Regex(@"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z0-9_.]+");
-
-        foreach (var line in lines)
+        var counts = new Dictionary<string, int>();
+        foreach (var script in parsingData.AllMonoScripts)
         {
-            var m = regex.Match(line);
-            if (!m.Success)
-                continue;
-            
-            var full = m.Value;
-            full = NormalizeNamespace(full);
-            var parts = full.Split('.');
-            string key = parts.Length >= 2 ? parts[0] + "." + parts[1] : parts[0];
-
-            dict.TryGetValue(key, out var cnt);
-            dict[key] = cnt + 1;
+            // UnityEngine, UnityEditor 등은 너무 광범위하므로 한 단계 더 깊게 본다
+            var parts = script.Split('.');
+            string key;
+            if (parts.Length > 1)
+            {
+                if ((parts[0] == "UnityEngine" || parts[0] == "Unity" || parts[0] == "UnityEditor") && parts.Length > 2)
+                {
+                    key = parts[0] + "." + parts[1];
+                }
+                else
+                {
+                    key = parts[0];
+                }
+            }
+            else
+            {
+                key = "(no namespace)";
+            }
+            counts[key] = counts.GetValueOrDefault(key) + 1;
         }
 
-        foreach (var kv in dict.OrderByDescending(k => k.Value).Take(30))
+        foreach (var kv in counts.OrderByDescending(x => x.Value).Take(30))
+        {
             result.Add((kv.Key, kv.Value));
+        }
 
         return result;
-    }
-    
-    static string NormalizeNamespace(string ns)
-    {
-        // BUnityEngine..., HUnity.InternalAPI..., 등 한 글자 + Unity... 패턴을 Unity...로 정규화
-        if (ns.Length > 6 &&
-            char.IsUpper(ns[0]) &&
-            ns.Substring(1).StartsWith("Unity", StringComparison.Ordinal))
-        {
-            return ns.Substring(1);
-        }
-
-        return ns;
     }
 
     private static byte[]? ExtractEntryBytes(ZipArchive zip, string entryName)
@@ -334,7 +341,7 @@ public class Analyzer
         return ms.ToArray();
     }
 
-    public static void AnalyzeDataUnity3D(List<ZipArchive> zips)
+    public static UnityParsingData AnalyzeDataUnity3D(List<ZipArchive> zips)
     {
         UnityAssetsReader.ClearCache();
 
@@ -345,6 +352,8 @@ public class Analyzer
         // Pass 2: Analyze GameObjects
         Console.WriteLine("[Analyzer] Pass 2: Analyzing GameObjects...");
         ProcessAllAssets(zips, false);
+
+        return UnityAssetsReader.ParsingData;
     }
 
     private static void ProcessAllAssets(List<ZipArchive> zips, bool scriptsOnly)
@@ -405,93 +414,24 @@ public class Analyzer
         }
     }
 
-    public static string DetectUiToolkit(List<ZipArchive> zips)
+    public static string DetectUiToolkit(List<ZipArchive> zips, UnityParsingData? parsingData)
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "UnityAndroidAnalyzer", "UiToolkitAnalysis_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(tempDir);
-        var dbPath = Path.Combine(tempDir, "analysis.db");
-
-        try
+        // 1. Scene에서 UIDocument 컴포넌트 사용 여부 확인 (가장 확실한 증거)
+        if (parsingData != null && parsingData.SceneComponents.Any(c => c.Contains("UIDocument")))
         {
-            bool foundDataFiles = false;
-            foreach (var zip in zips)
-            {
-                foreach (var entry in zip.Entries)
-                {
-                    if (entry.FullName.StartsWith("assets/bin/Data/") && 
-                        (entry.FullName.EndsWith(".assets") || 
-                         entry.FullName.EndsWith(".sharedassets") || 
-                         entry.FullName.Contains("globalgamemanagers")))
-                    {
-                        var targetPath = Path.Combine(tempDir, Path.GetFileName(entry.FullName));
-                        entry.ExtractToFile(targetPath, true);
-                        foundDataFiles = true;
-                    }
-                }
-            }
-
-            if (!foundDataFiles) return "no (no data files)";
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "UnityDataTool",
-                Arguments = $"analyze \"{tempDir}\" -o \"{dbPath}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null) return "error (UnityDataTool not found)";
-            process.WaitForExit();
-
-            if (!File.Exists(dbPath)) return "no (analysis.db not created)";
-
-            bool hasUiToolkit = false;
-            try
-            {
-                var queryStartInfo = new ProcessStartInfo
-                {
-                    FileName = "sqlite3",
-                    Arguments = $"\"{dbPath}\" \"SELECT COUNT(*) FROM types WHERE name IN ('PanelSettings', 'UIDocument', 'PanelRenderer');\"",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var queryProcess = Process.Start(queryStartInfo);
-                if (queryProcess != null)
-                {
-                    var output = queryProcess.StandardOutput.ReadToEnd().Trim();
-                    queryProcess.WaitForExit();
-                    if (int.TryParse(output, out int count) && count > 0)
-                    {
-                        hasUiToolkit = true;
-                    }
-                }
-            }
-            catch
-            {
-                return "error (sqlite3 query failed)";
-            }
-
-            return hasUiToolkit ? "yes" : "no";
+            return "yes (Scene)";
         }
-        catch (Exception ex)
+
+        return "no";
+    }
+
+    public static string DetectEntitiesPhysics(string scriptingAssembliesJson)
+    {
+        if (!string.IsNullOrEmpty(scriptingAssembliesJson))
         {
-            return $"error ({ex.Message})";
+            if (scriptingAssembliesJson.Contains("Unity.Physics", StringComparison.OrdinalIgnoreCase))
+                return "yes";
         }
-        finally
-        {
-            try
-            {
-                if (Directory.Exists(tempDir))
-                {
-                    Directory.Delete(tempDir, true);
-                }
-            }
-            catch { /* Ignore cleanup errors */ }
-        }
+        return "no";
     }
 }

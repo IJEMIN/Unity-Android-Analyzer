@@ -11,8 +11,9 @@ public class AnalysisResult
     public string NguiUsed { get; set; } = "";
     public string AddressablesUsed { get; set; } = "";
     public string HavokUsed { get; set; } = "";
+    public string EntitiesPhysicsUsed { get; set; } = "";
     public string UiToolkitUsed { get; set; } = "";
-    public List<(string Namespace, int Count)> MajorNamespaces { get; set; } = new();
+    public List<(string Script, int Count)> MajorScriptInsights { get; set; } = new();
     public string Markdown { get; set; } = "";
     
     // 파일 경로 저장을 위한 필드

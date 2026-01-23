@@ -99,16 +99,18 @@ public class UnityAnalyzer : IUnityAnalyzer
         var runtimeInitJson = Analyzer.ExtractJsonTextFromContainers(zipArchives, "assets/bin/Data/RuntimeInitializeOnLoads.json");
         var unityVersion = Analyzer.DetectUnityVersionFromContainers(zipArchives) ?? "Unknown";
         var metadataBytes = Analyzer.ExtractMetadataFromContainers(zipArchives);
-        var rp = Analyzer.DetectRenderPipeline(metadataBytes);
-        var entities = Analyzer.DetectEntities(scriptingAssembliesJson, runtimeInitJson);
-        var ngui = Analyzer.DetectNgui(scriptingAssembliesJson, metadataBytes);
-        var addr = Analyzer.DetectAddressables(zipArchives) ? "Yes" : "No";
-        var nsList = Analyzer.DetectMajorNamespaces(metadataBytes);
-        var havok = Analyzer.DetectHavokPhysics(scriptingAssembliesJson, runtimeInitJson, metadataBytes);
-        var uitk = Analyzer.DetectUiToolkit(zipArchives);
 
-        // data.unity3d 분석 테스트
-        Analyzer.AnalyzeDataUnity3D(zipArchives);
+        // 유니티 데이터 분석 수행 (2단계 분석 전략)
+        var parsingData = Analyzer.AnalyzeDataUnity3D(zipArchives);
+
+        var rp = Analyzer.DetectRenderPipeline(metadataBytes);
+        var entities = Analyzer.DetectEntities(scriptingAssembliesJson, runtimeInitJson, parsingData);
+        var ngui = Analyzer.DetectNgui(scriptingAssembliesJson, metadataBytes, parsingData);
+        var addr = Analyzer.DetectAddressables(zipArchives) ? "Yes" : "No";
+        var insights = Analyzer.GetMajorScriptInsights(parsingData);
+        var havok = Analyzer.DetectHavokPhysics(scriptingAssembliesJson, runtimeInitJson, metadataBytes);
+        var entPhys = Analyzer.DetectEntitiesPhysics(scriptingAssembliesJson);
+        var uitk = Analyzer.DetectUiToolkit(zipArchives, parsingData);
 
         // 추출된 파일들을 임시 디렉토리에 저장하여 나중에 열어볼 수 있게 함
         string? savedMetadataPath = null;
@@ -138,23 +140,24 @@ public class UnityAnalyzer : IUnityAnalyzer
         sb.AppendLine($"- **Unity Version:** `{unityVersion}`");
         sb.AppendLine($"- **Render Pipeline:** `{rp}`");
         sb.AppendLine($"- **Entities Used:** `{entities}`");
+        sb.AppendLine($"- **Entities Physics Used:** `{entPhys}`");
         sb.AppendLine($"- **NGUI Used:** `{ngui}`");
         sb.AppendLine($"- **Addressables Used:** `{addr}`");
         sb.AppendLine($"- **Havok Used:** `{havok}`");
         sb.AppendLine($"- **UI Toolkit Used:** `{uitk}`");
         sb.AppendLine();
-        sb.AppendLine("### Major Namespaces (top 30)");
+        sb.AppendLine("### Major Script Insights");
         sb.AppendLine();
 
-        if (nsList.Count == 0)
+        if (insights.Count == 0)
         {
-            sb.AppendLine("_No namespace information available (metadata not found or unreadable)._");
+            sb.AppendLine("_No script information available._");
         }
         else
         {
-            foreach (var (ns, count) in nsList)
+            foreach (var (script, count) in insights)
             {
-                sb.AppendLine($"- `{ns}` ({count})");
+                sb.AppendLine($"- `{script}` ({count})");
             }
         }
 
@@ -164,11 +167,12 @@ public class UnityAnalyzer : IUnityAnalyzer
             UnityVersion = unityVersion,
             RenderPipeline = rp,
             EntitiesUsed = entities,
+            EntitiesPhysicsUsed = entPhys,
             NguiUsed = ngui,
             AddressablesUsed = addr,
             HavokUsed = havok,
             UiToolkitUsed = uitk,
-            MajorNamespaces = nsList,
+            MajorScriptInsights = insights,
             Markdown = sb.ToString(),
             MetadataPath = savedMetadataPath,
             ScriptingAssembliesPath = savedScriptingPath

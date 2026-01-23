@@ -121,6 +121,10 @@
                             <SelectableTextBlock Grid.Column="1" Text="{Binding ResultHavokUsed}"/>
                         </Grid>
                         <Grid ColumnDefinitions="150, *">
+                            <TextBlock Grid.Column="0" Text="Entities Physics Used:" FontWeight="Bold"/>
+                            <SelectableTextBlock Grid.Column="1" Text="{Binding ResultEntitiesPhysicsUsed}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="150, *">
                             <TextBlock Grid.Column="0" Text="UI Toolkit Used:" FontWeight="Bold"/>
                             <SelectableTextBlock Grid.Column="1" Text="{Binding ResultUiToolkitUsed}"/>
                         </Grid>
@@ -128,8 +132,8 @@
                 </Border>
                 
                 <Grid Grid.Row="1" RowDefinitions="Auto, *">
-                    <TextBlock Grid.Row="0" Text="Major Namespaces (Top 30)" FontWeight="Bold" Margin="0,0,0,4"/>
-                    <ListBox Grid.Row="1" ItemsSource="{Binding ResultMajorNamespaces}">
+                    <TextBlock Grid.Row="0" Text="Major Script Insights" FontWeight="Bold" Margin="0,0,0,4"/>
+                    <ListBox Grid.Row="1" ItemsSource="{Binding ResultMajorScriptInsights}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <SelectableTextBlock Text="{Binding}" FontFamily="Consolas, Menlo, monospace"/>

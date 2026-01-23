@@ -11,8 +11,11 @@ public class UnityAssetsReader
     private bool _isBigEndian = true;
 
     private static Dictionary<(string file, long pathId), string> _globalMonoScripts = new();
+    private static UnityParsingData _parsingData = new();
     private List<string> _externals = new();
     private string _currentFileName = "";
+
+    public static UnityParsingData ParsingData => _parsingData;
 
     public UnityAssetsReader(Stream stream)
     {
@@ -23,6 +26,7 @@ public class UnityAssetsReader
     public static void ClearCache()
     {
         _globalMonoScripts.Clear();
+        _parsingData.Clear();
     }
 
     public void Read(string fileName = "", bool scriptsOnly = false)
@@ -259,6 +263,7 @@ public class UnityAssetsReader
                 
                 Console.WriteLine($"[Assets] MonoScript: \"{className}\" at PathId {info.PathId} in {_currentFileName}");
                 _globalMonoScripts[(_currentFileName, info.PathId)] = className;
+                _parsingData.AllMonoScripts.Add(className);
             }
             else
             {
@@ -267,6 +272,7 @@ public class UnityAssetsReader
                 {
                     Console.WriteLine($"[Assets] MonoScript (Fallback to Name): \"{scriptName}\" at PathId {info.PathId} in {_currentFileName}");
                     _globalMonoScripts[(_currentFileName, info.PathId)] = scriptName;
+                    _parsingData.AllMonoScripts.Add(scriptName);
                 }
             }
 
@@ -337,6 +343,14 @@ public class UnityAssetsReader
             if (!string.IsNullOrEmpty(name))
             {
                 Console.WriteLine($"[Assets] GameObject: \"{name}\", Components: [{string.Join(", ", componentNames)}]");
+            }
+
+            if (_currentFileName.StartsWith("level", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var comp in componentNames)
+                {
+                    _parsingData.SceneComponents.Add(comp);
+                }
             }
             
             _isBigEndian = oldEndian;
@@ -530,5 +544,17 @@ public class UnityAssetsReader
         if (bytes.Length < 8) throw new EndOfStreamException($"Expected 8 bytes for Int64, got {bytes.Length} at pos {_stream.Position}");
         if (_isBigEndian) Array.Reverse(bytes);
         return BitConverter.ToInt64(bytes, 0);
+    }
+}
+
+public class UnityParsingData
+{
+    public HashSet<string> AllMonoScripts { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> SceneComponents { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public void Clear()
+    {
+        AllMonoScripts.Clear();
+        SceneComponents.Clear();
     }
 }

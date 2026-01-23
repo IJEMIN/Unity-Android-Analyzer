@@ -49,11 +49,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string resultUnityVersion = "";
     [ObservableProperty] private string resultRenderPipeline = "";
     [ObservableProperty] private string resultEntitiesUsed = "";
+    [ObservableProperty] private string resultEntitiesPhysicsUsed = "";
     [ObservableProperty] private string resultNguiUsed = "";
     [ObservableProperty] private string resultAddressablesUsed = "";
     [ObservableProperty] private string resultHavokUsed = "";
     [ObservableProperty] private string resultUiToolkitUsed = "";
-    [ObservableProperty] private ObservableCollection<string> resultMajorNamespaces = new();
+    [ObservableProperty] private ObservableCollection<string> resultMajorScriptInsights = new();
 
     private string? _currentMetadataPath;
     private string? _currentScriptingPath;
@@ -99,6 +100,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ResultUnityVersion = result.UnityVersion;
         ResultRenderPipeline = result.RenderPipeline;
         ResultEntitiesUsed = result.EntitiesUsed;
+        ResultEntitiesPhysicsUsed = result.EntitiesPhysicsUsed;
         ResultNguiUsed = result.NguiUsed;
         ResultAddressablesUsed = result.AddressablesUsed;
         ResultHavokUsed = result.HavokUsed;
@@ -112,10 +114,10 @@ public partial class MainWindowViewModel : ViewModelBase
             ResultUiToolkitUsed = result.UiToolkitUsed;
         }
         
-        ResultMajorNamespaces.Clear();
-        foreach (var ns in result.MajorNamespaces)
+        ResultMajorScriptInsights.Clear();
+        foreach (var insight in result.MajorScriptInsights)
         {
-            ResultMajorNamespaces.Add($"{ns.Namespace} ({ns.Count})");
+            ResultMajorScriptInsights.Add($"{insight.Script} ({insight.Count})");
         }
 
         _currentMetadataPath = result.MetadataPath;
